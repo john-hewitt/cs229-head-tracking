@@ -1,6 +1,30 @@
 import csv
 import numpy as np
 
+# globals
+mos = [0, 2, 6, 12] 
+exps = ['R', 'N1', 'N2', 'P1', 'P2']
+
+def tracking_file(pId, mo, exp):
+    """ Helper function.
+    
+        For a given participant id PID, time frame (month number) MO, 
+        and experience type EXP, returns the string associated with 
+        the relevant .txt filename
+    """
+    valid_pId = lambda x : len(x) == 7 # good enough
+
+    assert valid_pId(pId)
+    assert mo in mos 
+    assert exp in exps
+
+    tfilename = 'tracking_{}{}{}.txt'.format(pId, int(mo), exp)
+
+    base = os.relpath('../data/Tracking/')
+    tfile = os.path.join(base, tfilename)
+
+    return tfile
+
 # SARAH
 def load_participant_scores(csvfile):
     """ Load participant data (GAD7 and SCL20 scores) from CSVFILE.
