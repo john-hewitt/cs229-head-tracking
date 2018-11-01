@@ -1,0 +1,4 @@
+# remove temporary Vim files
+*~
+*.swp
+*.swo
