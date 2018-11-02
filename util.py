@@ -1,4 +1,6 @@
 import csv
+import json
+import os
 import numpy as np
 
 # globals
@@ -18,9 +20,12 @@ def tracking_file(pId, mo, exp):
     assert mo in mos 
     assert exp in exps
 
-    tfilename = 'tracking_{}{}{}.txt'.format(pId, int(mo), exp)
+    if mo > 0:
+        tfilename = 'tracking_{}{}{}.txt'.format(pId, int(mo), exp)
+    else:
+        tfilename = 'tracking_{}{}.txt'.format(pId, exp)
 
-    base = os.relpath('../data/Tracking/')
+    base = os.path.relpath('../data/Tracking/')
     tfile = os.path.join(base, tfilename)
 
     return tfile
@@ -62,7 +67,30 @@ def compute_fvec(tfile):
 
         Returns the feature vector as a 1-by-24 numpy array.
     """
-    pass
+    # load data from file
+    with open(tfile,'rb') as tsvin:
+        tsvin = csv.reader(tsvin, delimiter='\t')
+        
+        rot = [] 
+        for row in tsvin:
+            ch1 = row[1]
+            ch2 = row[2]
+            roti = json.loads(ch1) + json.loads(ch2)
+            rot.append(roti)
+
+    # compute features
+    rot = np.array(rot)
+    rotmus = np.mean(rot, axis=0)
+    rotsigmas = np.var(rot, axis=0) 
+
+    delta = np.absolute(np.diff(rot, axis=0))
+    deltasums = np.sum(delta, axis=0)
+    deltasigmas = np.var(delta, axis=0)
+
+    # shape output
+    fvec = np.concatenate([rotmus, rotsigmas, deltasums, deltasigmas])
+    fvec = np.expand_dims(fvec, 0)
+    return fvec
 
 # COOPER
 def compute_fvecs_for_parts(parts):
@@ -74,7 +102,17 @@ def compute_fvecs_for_parts(parts):
 
         Returns the training matrix as an N-by-120 numpy array.
     """
-    pass
+    fvecs = None
+    for part in parts:
+        tfiles = [tracking_file(part, 0, exp) for exp in exps]
+        expvecs = [compute_fvec(tfile) for tfile in tfiles] 
+        fvec = np.concatenate(expvecs, axis=1)
+        if fvecs is None: 
+            fvecs = np.array(fvec)
+        else:
+            fvecs = np.concatenate([fvecs, fvec], axis=0)
+        
+    return fvecs
 
     
     
