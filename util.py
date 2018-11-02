@@ -7,32 +7,46 @@ import numpy as np
 mos = [0, 2, 6, 12] 
 exps = ['R', 'N1', 'N2', 'P1', 'P2']
 
-def tracking_file(pId, mo, exp):
+def tracking_file(part, mo, exp):
     """ Helper function.
     
-        For a given participant id PID, time frame (month number) MO, 
+        For a given participant PART, time frame (month number) MO, 
         and experience type EXP, returns the string associated with 
         the relevant .txt filename
     """
     valid_pId = lambda x : len(x) == 7 # good enough
 
-    assert valid_pId(pId)
+    assert valid_pId(part)
     assert mo in mos 
     assert exp in exps
 
     if mo > 0:
-        tfilename = 'tracking_{}{}{}.txt'.format(pId, int(mo), exp)
+        tfilename = 'tracking_{}{}{}.txt'.format(part, int(mo), exp)
     else:
-        tfilename = 'tracking_{}{}.txt'.format(pId, exp)
+        tfilename = 'tracking_{}{}.txt'.format(part, exp)
 
     base = os.path.relpath('../data/Tracking/')
     tfile = os.path.join(base, tfilename)
 
     return tfile
 
+def have_part_baseline(part):
+    """ Helper function 
+        
+        Returns True if we have the baseline (0 month) head tracking 
+        data of participant PART for all experience types.
+
+        Returns False otherwise.
+    """
+    tfiles = [tracking_file(part, 0, exp) for exp in exps]
+    return all([os.path.isfile(tfile) for tfile in tfiles]) 
+
 # SARAH
 def load_participant_scores(csvfile):
     """ Load participant data (GAD7 and SCL20 scores) from CSVFILE.
+
+        Only load a participant's data if we have their head tracking
+        data. Useful helper function: have_part_baseline.
 
         Returns a dictionary mapping participant ID string to 
         a tuple (GAD7 score, SCL20 score).
@@ -57,7 +71,6 @@ def SCL20_labels(parts, scoresDict):
     """
     pass
 
-# COOPER
 def compute_fvec(tfile):
     """ Takes in a tracking file path, and computes the feature vector
         corresponding to head movement data for each experience type. 
@@ -92,7 +105,6 @@ def compute_fvec(tfile):
     fvec = np.expand_dims(fvec, 0)
     return fvec
 
-# COOPER
 def compute_fvecs_for_parts(parts):
     """ For each of N participants given by PARTS, compute features for
         each of the experience types and concatenate them to form
@@ -104,6 +116,7 @@ def compute_fvecs_for_parts(parts):
     """
     fvecs = None
     for part in parts:
+        assert have_part_baseline(part)
         tfiles = [tracking_file(part, 0, exp) for exp in exps]
         expvecs = [compute_fvec(tfile) for tfile in tfiles] 
         fvec = np.concatenate(expvecs, axis=1)
