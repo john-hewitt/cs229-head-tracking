@@ -42,12 +42,12 @@ if __name__ == '__main__':
     test_compute_fvecs_for_parts = True
     if test_compute_fvec:
         fvec = util.compute_fvec('../data/test.txt')
-        print fvec
+        print(fvec)
         assert fvec[:6] == [28.5, 13, 0, 2, -1.5, 1]
     if test_compute_fvecs_for_parts:
         parts = ['LA13272', 'MV01950']
         X = util.compute_fvecs_for_parts(parts)
-        print X
+        print(X)
 
     main()
 

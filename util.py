@@ -100,7 +100,7 @@ def compute_fvec(tfile):
         Returns the feature vector as a 1-by-24 numpy array.
     """
     # load data from file
-    with open(tfile,'rb') as tsvin:
+    with open(tfile) as tsvin:
         tsvin = csv.reader(tsvin, delimiter='\t')
         
         rot = [] 
