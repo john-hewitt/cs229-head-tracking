@@ -51,7 +51,26 @@ def load_participant_scores(csvfile):
         Returns a dictionary mapping participant ID string to 
         a tuple (GAD7 score, SCL20 score).
     """
-    pass
+
+    scores_dict = {}
+
+    # load labels from file                                                
+    with open(csvfile,'rt', encoding = "utf8") as csvfile:
+
+        reader = csv.DictReader(csvfile)   
+        next(reader) # skip headings
+
+        for row in reader:
+            part = row["subNum"]
+            if have_part_baseline(part):
+                gad7 = row["GAD7_score"]
+                scl20 = row["SCL_20"]
+                # only add labels if both scores are valid
+                if (gad7 != "NA") and (scl20 != "NA" ):
+                    scores_dict[part] = (gad7, scl20)
+
+    return scores_dict
+
 
 # SARAH
 def GAD7_labels(parts, scoresDict):
@@ -104,6 +123,8 @@ def compute_fvec(tfile):
     fvec = np.concatenate([rotmus, rotsigmas, deltasums, deltasigmas])
     fvec = np.expand_dims(fvec, 0)
     return fvec
+    
+
 
 def compute_fvecs_for_parts(parts):
     """ For each of N participants given by PARTS, compute features for
@@ -114,6 +135,7 @@ def compute_fvecs_for_parts(parts):
 
         Returns the training matrix as an N-by-120 numpy array.
     """
+    
     fvecs = None
     for part in parts:
         assert have_part_baseline(part)
@@ -126,6 +148,7 @@ def compute_fvecs_for_parts(parts):
             fvecs = np.concatenate([fvecs, fvec], axis=0)
         
     return fvecs
+    
 
     
     
