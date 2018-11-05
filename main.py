@@ -3,20 +3,46 @@ import random
 
 import numpy as np
 from sklearn import linear_model
+from sklearn.model_selection import train_test_split
 
 import util
 import models
+
+# for testing for now
+parts = ['LA13272', 'LA14016', 'MV00962', 'MV01113', 'MV01950', 'MV07296', 'MV07303','MV07647','MV08032','MV09122', 'MV09305', 'MV09441', 'MV09586','MV11133','MV11150', 'MV11202', 'PA22014', 'PA22544','PA22561','PA22728','PA23284', 'PA23955','PA24326', 'PA24859','PA24876','PA25084','PA25119',  'PA25306','PA26203','PA26376', 'PA26623', 'PA27784','PA27793','PA27962','PA30895', 'PA30677', 'PA30862', 'PA30895', 'SU30734', 'SU30816','SU33550','SU35282']
 
 # JOHN
 
 def run_gad7_experiment(args):
     '''
     Trains/evaluates models to predict the GAD7 variable from head movement data.
-
+    
     param args: a dictionary of arguments to be used in running this experiment.
     '''
+    tracking_data = '../data/test.txt'
+    part_data = '../data/participant_data.csv'
+    
+    # get parts
+    # parts = ['LA13272', 'LA14016', 'MV00962', 'MV01113', 'MV01950', 'MV07296', 'MV07303','MV07647','MV08032','MV09122', 'MV09305', 'MV09441', 'MV09586','MV11133','MV11150', 'MV11202', 'PA22014', 'PA22544','PA22561','PA22728','PA23284', 'PA23955','PA24326', 'PA24859','PA24876','PA25084','PA25119',  'PA25306','PA26203','PA26376', 'PA26623', 'PA27784','PA27793','PA27962','PA30895', 'PA30677', 'PA30862', 'PA30895', 'SU30734', 'SU30816','SU33550','SU35282']
+    
+    # load features and labels
+    X = util.compute_fvecs_for_parts(parts)
+    scores = util.load_participant_scores(part_data)
+    y = util.GAD7_labels(parts, scores)
+
+    # Split data into train, eval, and test sets                                           
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=1)
+
+    # Train model
     gad_model = models.RegressionGAD7Model()
-    gad_model.fit()
+    gad_model.fit(X_train, y_train)
+
+    # Do something with eval set
+
+    # Predict on test set and evaluate
+    y_predict = gad_model.predict(X_test)
+    print("\nModel predictions: {} \nTrue labels:       {} \n".format(y_predict, y_test))
 
 def run_slc20_experiment(args):
     '''
@@ -24,8 +50,26 @@ def run_slc20_experiment(args):
 
     param args: a dictionary of arguments to be used in running this experiment.
     '''
+    tracking_data = '../data/test.txt'
+    part_data = '../data/participant_data.csv'
+
+    # load features and labels                                                                               
+    X = util.compute_fvecs_for_parts(parts)
+    scores = util.load_participant_scores(part_data)
+    y = util.SCL20_labels(parts, scores)
+
+    # Split data into train, eval, and test sets                                                                          
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1)
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=1)
+
+    # Train the model
     slc_model = models.ClassificationSLC20Model()
-    slc_model.fit()
+    slc_model.fit(X_train, y_train)
+    
+    # Predict on test set and evaluate
+    y_predict = slc_model.predict(X_test)
+    print("\nModel predictions: {}".format(y_predict))
+    print("True labels:       {} \n".format(y_test))
 
 # SARAH / COOPER
     
@@ -37,7 +81,8 @@ def main(args):
 
     Analyzes these models' efficacy on a test set and (maybe) on 
     future (2 month, 6 month, 12 month) data.
-    """ 
+    """
+    
     print('Running GAD7 experiment...')
     run_gad7_experiment(args)
     print('GAD7 experiment finished.')

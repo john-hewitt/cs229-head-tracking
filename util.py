@@ -74,8 +74,7 @@ def load_participant_scores(csvfile):
 
 
 # SARAH
-# having parts maybe seems redundant if we already test for valid participants in load_part_scores , and so all parts will be exactly those in dictionary anyway 
-def GAD7_labels(scoresDict):
+def GAD7_labels(parts, scoresDict):
     """ For each of N participants given by PARTS, determine the GAD7 
         score label.
 
@@ -84,14 +83,8 @@ def GAD7_labels(scoresDict):
 
     gad_labels = np.zeros(len(parts))
 
-    for part, scores in scoresDict.items():
-        gad_labels[part] = scores[0]
-        
-    # just sort the list so we have it in consistent order
-    gad_labels.sort()
-    
-    # convert to numpy array
-    np.asarray(gad_labels)
+    for part, part_idx in zip(parts, range(0, len(parts))):        
+        gad_labels[part_idx] = scoresDict[part][0]
 
     return gad_labels
     
@@ -105,8 +98,8 @@ def SCL20_labels(parts, scoresDict):
 
     scl_labels = np.zeros(len(parts)) 
     
-    for part in parts:
-        scl_label[part] = scoresDict[part][1]
+    for part, part_idx in zip(parts, range(0, len(parts))):
+        scl_labels[part_idx] = scoresDict[part][1]
         
     # return actual scl score or {0,1} label?
     # if want y in {0,1}:
