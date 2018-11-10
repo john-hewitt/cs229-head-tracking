@@ -28,11 +28,13 @@ def gad7_hold_one_out(args):
     part_data = '../data/participant_data.csv'
     
     # load features and labels
-    X_train_dev = util.compute_fvecs_for_parts(train_dev_participants)
+    X_train_dev = util.compute_fvecs_for_parts(train_dev_participants)[:,0:12]
     scores = util.load_participant_scores(part_data)
     y_train_dev = util.GAD7_labels(train_dev_participants, scores)
 
     # Run hold-one-out evaluation on the train_dev set.
+    hoo_train_avg_errors = []
+    hoo_val_errors = []
     for hold_out_index, _ in enumerate(X_train_dev):
       X_hold_out = X_train_dev[hold_out_index].reshape(1, -1)
       y_hold_out = y_train_dev[hold_out_index]
@@ -46,9 +48,18 @@ def gad7_hold_one_out(args):
       gad_model = models.RegressionGAD7Model()
       gad_model.fit(X_hold_one_out_train, y_hold_one_out_train)
 
+      y_train_predict = gad_model.predict(X_hold_one_out_train)
+      y_train_error = np.mean(np.square(y_hold_one_out_train - y_train_predict))
+      hoo_train_avg_errors.append(y_train_error)
+
       # Predict on the held-out example
       y_predict = gad_model.predict(X_hold_out)
-      print("\nModel predictions: {} \nTrue labels:       {} \n".format(y_predict, y_hold_out))
+      y_val_error = np.square(y_predict - y_hold_out)
+      hoo_val_errors.append(y_val_error)
+      #print("\nModel predictions: {} \nTrue labels:       {} \n".format(y_predict, y_hold_out))
+    print("Avg GAD7 train error: {}".format(np.mean(hoo_train_avg_errors)))
+    print("Avg GAD7 hold-one-out val: {}".format(np.mean(hoo_val_errors)))
+
 
 
 def run_slc20_experiment(args):

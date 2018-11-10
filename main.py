@@ -23,15 +23,6 @@ def main(args):
     experiment_name = args.expt
     experiments.run_experiment(experiment_name, args)
 
-    exit()
-    print('Running GAD7 experiment...')
-    run_gad7_experiment(args)
-    print('GAD7 experiment finished.')
-    print()
-    print('Running SLC20 experiment...')
-    run_slc20_experiment(args)
-    print('SLC20 experiment finished.')
-
 def simple_test_suite(args):
     '''
     Runs through a short test suite, running each test or not depending

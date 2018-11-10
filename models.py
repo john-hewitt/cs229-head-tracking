@@ -75,7 +75,7 @@ class RegressionGAD7Model(Model):
 
         # Train linear regression model with lasso regularization 
         # lasso? ridge? ridgeCV? what should we use!  figure that out using eval set?
-        clf = linear_model.Lasso(alpha = 0.0001, max_iter=1e5)
+        clf = linear_model.Lasso(alpha = 1, max_iter=1e8)
         
         clf.fit(X, y)
 
@@ -86,6 +86,8 @@ class RegressionGAD7Model(Model):
         self.theta_coeff = theta_coeff
         self.clf = clf
         self.trained = True
+
+        y_pred = clf.predict(X)
 
         return theta_coeff
 
