@@ -8,6 +8,14 @@ import sklearn as sk
 mos = [0, 2, 6, 12] 
 exps = ['R', 'N1', 'N2', 'P1', 'P2']
 
+# file naming conventions
+def tfname_to_id(fname):
+    return fname[9:15]
+def tfname_to_mo(fname):
+    pass
+def tfname_to_exp(fname):
+    pass
+
 def tracking_file(part, mo, exp):
     """ Helper function.
     
@@ -31,15 +39,23 @@ def tracking_file(part, mo, exp):
 
     return tfile
 
-def have_part_baseline(part):
+def which_months(part):
+    """ Helper function
+
+        Returns all of the months for which we have the head tracking
+        data of participant PART for all experience types.
+    """
+    return filter(lambda mo: have_part_mo(part, mo), mos)
+
+def have_part_mo(part, mo):
     """ Helper function 
         
-        Returns True if we have the baseline (0 month) head tracking 
+        Returns True if we have month MO's head tracking 
         data of participant PART for all experience types.
 
         Returns False otherwise.
     """
-    tfiles = [tracking_file(part, 0, exp) for exp in exps]
+    tfiles = [tracking_file(part, mo, exp) for exp in exps]
     return all([os.path.isfile(tfile) for tfile in tfiles]) 
 
 # SARAH
@@ -47,7 +63,7 @@ def load_participant_scores(csvfile):
     """ Load participant data (GAD7 and SCL20 scores) from CSVFILE.
 
         Only load a participant's data if we have their head tracking
-        data. Useful helper function: have_part_baseline.
+        data. Useful helper function: have_part_mo.
 
         Returns a dictionary mapping participant ID string to 
         a tuple (GAD7 score, SCL20 score).
@@ -63,7 +79,7 @@ def load_participant_scores(csvfile):
 
         for row in reader:
             part = row["subNum"]
-            if have_part_baseline(part):
+            for mo in which_months(part):
                 gad7 = row["GAD7_score"]
                 scl20 = row["SCL_20"]
                 # only add labels if both scores are valid
@@ -71,6 +87,36 @@ def load_participant_scores(csvfile):
                     scores_dict[part] = (gad7, scl20)
 
     return scores_dict
+
+gad7 = 'GAD7_score'
+scl20 = 'SCL_20'
+def load_scores(csvfile, part_mos, score_type):
+    """ Given a list of tuples PART_MOS (the first element is participant
+        id, the second is the month), load the SCORE_TYPE score for
+        each from CSVFILE.
+
+        SCORE_TYPE is the name of the column that contains the score.
+
+        Returns a len(part_mos)-by-1 numpy array.
+    """
+    pass
+
+def which_parts_have_score(csvfile, scoreType):
+    """ For scoring metric SCORETYPE, return all tuples (participant id, 
+        month) for which we have that score in CSVFILE.
+
+        SCORE_TYPE is the name of the column that contains the score.
+
+        Returns a list of tuples.
+    """
+    pass
+
+
+def which_parts_have_tracking_data(folder):
+    """ Returns all tuples (participant id, month) for which we have 
+        tracking data in FOLDER. 
+    """
+    pass
 
 
 # SARAH
@@ -147,23 +193,34 @@ def compute_fvec(tfile):
     fvec = np.concatenate([rotmus, rotsigmas, deltasums, deltasigmas])
     fvec = np.expand_dims(fvec, 0)
     return fvec
-    
 
 
-def compute_fvecs_for_parts(parts):
-    """ For each of N participants given by PARTS, compute features for
+def compute_fvecs_for_parts(parts, baseline_only=False):
+    """ For each of participants given by PARTS, compute features for
         each of the experience types and concatenate them to form
         one feature vector per participant.
 
+        If BASELINE_ONLY flag is specified, compute the features from
+        only the baseline data of the participants, asserting that 
+        we have the full set of baseline data for each. In this case,
+        the N described below would be len(PARTS).
+
         There are 24 features / experience * 5 experiences = 120 features
 
-        Returns the training matrix as an N-by-120 numpy array.
+        Returns the training matrix as an N-by-120 numpy array, where
+        N is the number of full sets of VR data we have on the given
+        PARTS.
     """
-    
     fvecs = None
     for part in parts:
-        assert have_part_baseline(part)
-        tfiles = [tracking_file(part, 0, exp) for exp in exps]
+        if baseline_only:
+            baseline_mo = 0
+            assert have_part_mo(part, baseline_mo)
+            tfiles = [tracking_file(part, baseline_mo, exp) for exp in exps]
+        else:
+            part_mos = which_months(part)
+            tfiles = [tracking_file(part, mo, exp) for exp in exps
+                                                   for mo in part_mos]
         expvecs = [compute_fvec(tfile) for tfile in tfiles] 
         fvec = np.concatenate(expvecs, axis=1)
         if fvecs is None: 
