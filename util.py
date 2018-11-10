@@ -22,9 +22,9 @@ def tracking_file(part, mo, exp):
     assert exp in exps
 
     if mo > 0:
-        tfilename = 'tracking_{}{}{}.txt'.format(part, int(mo), exp)
+        tfilename = 'tracking_{}{}{}.txt'.format(part, int(mo), exp).upper()
     else:
-        tfilename = 'tracking_{}{}.txt'.format(part, exp)
+        tfilename = 'tracking_{}{}.txt'.format(part, exp).upper()
 
     base = os.path.relpath('../data/Tracking/')
     tfile = os.path.join(base, tfilename)
