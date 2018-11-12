@@ -56,7 +56,20 @@ def simple_test_suite(args):
         scores_dict = util.load_participant_scores('../data/participant_data.csv')
         print(scores_dict)
         testing_run = True
-
+    if args.test_which_tracking:
+        pid_mos_t = util.which_parts_have_tracking_data('../data/Tracking/')
+        print('first 5 items: {}'.format(pid_mos_t[:5]))
+        print('number of items: {}'.format(len(pid_mos_t)))
+        testing_run = True
+    if args.test_which_scores:
+        pid_mos_sg = util.which_parts_have_score('../data/participant_data.csv', 'GAD7_score')
+        pid_mos_ss = util.which_parts_have_score('../data/participant_data.csv', 'SCL_20')
+        print('first 5 items: {}'.format(pid_mos_sg[:5]))
+        print('number of items: {}'.format(len(pid_mos_sg)))
+        testing_run = True
+    if args.test_which_scores and args.test_which_tracking:
+        print('number of (pid, mo) pairs that have both tracking data and GAD7 scores: {}'.format(len(set(pid_mos_t) & set(pid_mos_sg))))
+        print('number of (pid, mo) pairs that have both tracking data and SCL20 scores: {}'.format(len(set(pid_mos_t) & set(pid_mos_ss))))
     if testing_run:
         print('Tests completed; exiting without running experiments...')
         exit()
@@ -70,6 +83,10 @@ if __name__ == '__main__':
             help='Flag indicating whether to test computation of specified features')
     parser.add_argument('--test_load_scores', default=False,
             help='Flag indicating whether to test loading of response variables')
+    parser.add_argument('--test_which_tracking', default=False,
+            help='flag indicating whether to test loading of which (pid, mo) pairs have tracking data')
+    parser.add_argument('--test_which_scores', default=False,
+            help='flag indicating whether to test loading which (pid, mo) pairs have GAD7/SCL20 scores')
     parser.add_argument('--random-seed', default=1, type=int,
             help='Random seed to ensure replicable results.')
     parser.add_argument('--expt', type=str, default = '',

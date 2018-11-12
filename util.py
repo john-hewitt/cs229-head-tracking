@@ -3,18 +3,41 @@ import json
 import os
 import numpy as np
 import sklearn as sk
+import re
 
 # globals
 mos = [0, 2, 6, 12] 
 exps = ['R', 'N1', 'N2', 'P1', 'P2']
 
 # file naming conventions
-def tfname_to_id(fname):
-    return fname[9:15]
-def tfname_to_mo(fname):
-    pass
-def tfname_to_exp(fname):
-    pass
+id_reg = '[a-z]{2}[0-9]{5}'
+mo_reg = '((2|6|12)mo)?'
+exp_reg = '(n1|n2|r|p1|p2)'
+tfname_reg = r'tracking_{}{}{}\.txt'.format(id_reg,
+                                           mo_reg,
+                                           exp_reg)
+def valid_tfname(fname):
+    fname = fname.lower()
+    val = re.match(tfname_reg, fname) is not None
+    return val
+
+def tfname_parts(fname):
+    assert valid_tfname(fname)
+    fname = fname.lower()
+    Id = fname[9:16]
+    if fname[16:18] == 'mo':
+        Mo = int(fname[15])
+    elif fname[17:19] == 'mo':
+        Mo = 12
+    else:
+        Mo = 0
+    if fname[-5] == 'r':
+        Exp = 'r'
+    else:
+        Exp = fname[-6:-4]
+    assert Exp.upper() in exps
+    assert Mo in mos
+    return Id,Mo,Exp
 
 def tracking_file(part, mo, exp):
     """ Helper function.
@@ -79,7 +102,7 @@ def load_participant_scores(csvfile):
 
         for row in reader:
             part = row["subNum"]
-            for mo in which_months(part):
+            if have_part_mo(part, 0):
                 gad7 = row["GAD7_score"]
                 scl20 = row["SCL_20"]
                 # only add labels if both scores are valid
@@ -101,22 +124,55 @@ def load_scores(csvfile, part_mos, score_type):
     """
     pass
 
-def which_parts_have_score(csvfile, scoreType):
-    """ For scoring metric SCORETYPE, return all tuples (participant id, 
-        month) for which we have that score in CSVFILE.
+def which_parts_have_score(csvfile, score_type):
+    """ For scoring metric SCORETYPE, return all tuples 
+        (lowercase participant id, month) for which we have that score 
+        in CSVFILE.
 
         SCORE_TYPE is the name of the column that contains the score.
 
         Returns a list of tuples.
     """
-    pass
+    pid_mos = [] 
+    with open(csvfile,'rt', encoding = "utf8") as csvfile:
+        reader = csv.DictReader(csvfile)   
+        next(reader) # skip headings
 
+        for row in reader:
+            pid = row['subNum'].lower()
+            mo = int(row['time'])
+            score = row[score_type]
+            if score != "NA":
+                pid_mos.append((pid, mo))
 
-def which_parts_have_tracking_data(folder):
-    """ Returns all tuples (participant id, month) for which we have 
-        tracking data in FOLDER. 
+    # ensure each element of pid_mos is unique
+    assert len(set(pid_mos)) == len(pid_mos)
+
+    return pid_mos
+
+def which_parts_have_tracking_data(folder, verbose=False):
+    """ Returns all tuples (lowercase participant id, month) for which 
+        we have tracking data in FOLDER. 
+
+        Set VERBOSE to True if you'd like info on how many files found,
+        etc.
     """
-    pass
+    vprint = print if verbose else lambda x : x
+
+    # get lowercase name of all fles
+    tfiles = [f.lower() for f in os.listdir(folder)]
+    vprint('number of tracking files found: {}'.format(len(tfiles)))
+
+    # regex-filter for all "usable" filenames
+    val_tfiles = filter(valid_tfname, tfiles)
+
+    # parse filenames to generate tuples
+    pid_mos = [tfname_parts(f)[0:2] for f in val_tfiles]
+    vprint('number of VALID tracking files found: {}'.format(len(pid_mos)))
+    pid_mos_uniq = list(set(pid_mos))
+    vprint('number of (pid,mo) pairs found: {}'.format(len(pid_mos_uniq)))
+
+    return pid_mos_uniq
 
 
 # SARAH
@@ -231,7 +287,7 @@ def compute_fvecs_for_parts(parts, baseline_only=False):
     return fvecs
     
 
-    
+   
     
     
 
