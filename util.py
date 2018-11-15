@@ -299,7 +299,22 @@ def compute_fvecs_for_parts(pid_mos):
     return fvecs
     
 
-   
+def get_experience_indices(experience):
+    """Given an experience type in ['R', 'N1', 'N2', 'P1', 'P2']  
+       return the indices in the feature vector that the 
+       experience maps to 
+    """
+    if experience == 'R':
+        indices = (0, 23)
+    elif experience == 'N1':
+        indices = (24, 47)
+    elif experience == 'N2':
+        indices = (48, 71)
+    elif experience == 'P1':
+        indices =  (72, 95)
+    elif experience =  'P2':
+        indices = (96, 123)
+    return indices
     
     
 
