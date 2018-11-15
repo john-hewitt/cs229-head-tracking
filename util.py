@@ -312,7 +312,7 @@ def get_experience_indices(experience):
         indices = (48, 71)
     elif experience == 'P1':
         indices =  (72, 95)
-    elif experience =  'P2':
+    elif experience ==  'P2':
         indices = (96, 123)
     return indices
     

@@ -57,9 +57,9 @@ class RegressionGAD7Model(Model):
         """        
 
         # Need to make sure we have model predicitions in the appropriate range [0 - ~25?]
-    #    #clf = linear_model.Lasso(alpha = 1, max_iter=1e8)
+        clf = linear_model.Lasso(alpha = 1, max_iter=1e8)
     #    clf = tree.DecisionTreeRegressor(min_samples_leaf=8)
-        clf = AdaBoostRegressor(max_depth = 4,  n_estimators = 100)
+        #clf = AdaBoostRegressor(max_depth = 4,  n_estimators = 100)
         clf.fit(X, y)
 
         # Get theta
