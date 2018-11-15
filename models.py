@@ -2,6 +2,8 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import util
+from sklearn import tree
+from sklearn.ensemble import AdaBoostRegressor
 from sklearn import linear_model
 from sklearn.linear_model import LogisticRegressionCV
 import numpy as np
@@ -52,44 +54,26 @@ class RegressionGAD7Model(Model):
         Y is a N-by-1, and Theta is 120-by-1.
 
         Note: we can change this architecture up - I'm open to suggestions :)
-        """
-        # do this all outside of fit? pass in via X, y ... and then don't have to return X,y
-        '''       tracking_data = '../data/test.txt'
-        part_data = '../data/participant_data.csv'
-        
-        # get PARTS 
-        parts = ['LA13272', 'LA14016', 'MV00962', 'MV01113', 'MV01950', 'MV07296', 'MV07303','MV07647','MV08032','MV09122', 'MV09305', 'MV09441', 'MV09586','MV11133','MV11150', 'MV11202', 'PA22014', 'PA22544','PA22561','PA22728','PA23284', 'PA23955','PA24326', 'PA24859','PA24876','PA25084','PA25119',  'PA25306','PA26203','PA26376', 'PA26623', 'PA27784','PA27793','PA27962','PA30895', 'PA30677', 'PA30862', 'PA30895', 'SU30734', 'SU30816','SU33550','SU35282']
-        
-        # load features
-        train_matrix = util.compute_fvecs_for_parts(parts)
-        
-        # load labels
-        score_dict = util.load_participant_scores(part_data)
-        
-        # get gad7 labels
-        gad_labels = util.GAD7_labels(parts, score_dict)
-        ''' 
-        # Need to make sure we have model predicitions in the appropriate range [0 - ~25?]
-        # maybe it would be better to do this as categorical multinomial? buckets of how given in data dictionary
-        # Measure of anxiety 1-4 below threshold, 5-9 mild, 10-14 moderate, 15+ severe
+        """        
 
-        # Train linear regression model with lasso regularization 
-        # lasso? ridge? ridgeCV? what should we use!  figure that out using eval set?
-        clf = linear_model.Lasso(alpha = 1, max_iter=1e8)
-        
+        # Need to make sure we have model predicitions in the appropriate range [0 - ~25?]
+    #    #clf = linear_model.Lasso(alpha = 1, max_iter=1e8)
+    #    clf = tree.DecisionTreeRegressor(min_samples_leaf=8)
+        clf = AdaBoostRegressor(max_depth = 4,  n_estimators = 100)
         clf.fit(X, y)
 
         # Get theta
-        theta_coeff = clf.coef_
+    #      theta_coeff = clf.coef_
 
         # Save the fit model + coeffs
-        self.theta_coeff = theta_coeff
+    #    self.theta_coeff = theta_coeff
         self.clf = clf
         self.trained = True
 
         y_pred = clf.predict(X)
 
-        return theta_coeff
+        return y_pred
+   #      return theta_coeff
 
 
     def predict(self, x):        
