@@ -139,7 +139,7 @@ def load_scores(csvfile, pid_mos, score_type):
             if (pid,mo) in pid_mos:
                 score = row[score_type]
                 assert score != "NA"
-                scores_dict[(pid,mo)] = score
+                scores_dict[(pid,mo)] = int(score)
 
     scores = [scores_dict[pid_mo] for pid_mo in pid_mos]
     return scores
