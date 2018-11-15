@@ -11,8 +11,8 @@ exps = ['R', 'N1', 'N2', 'P1', 'P2']
 
 # file naming conventions
 id_reg = '[a-z]{2}[0-9]{5}'
-mo_reg = '((2|6|12)mo)?'
-exp_reg = '(n1|n2|r|p1|p2)'
+mo_reg = '(((2)|(6)|(12))mo)?'
+exp_reg = '((n1)|(n2)|(r)|(p1)|(p2))'
 tfname_reg = r'tracking_{}{}{}\.txt'.format(id_reg,
                                            mo_reg,
                                            exp_reg)
@@ -25,9 +25,9 @@ def tfname_parts(fname):
     assert valid_tfname(fname)
     fname = fname.lower()
     Id = fname[9:16]
-    if fname[16:18] == 'mo':
-        Mo = int(fname[15])
-    elif fname[17:19] == 'mo':
+    if fname[17:19] == 'mo':
+        Mo = int(fname[16])
+    elif fname[18:20] == 'mo':
         Mo = 12
     else:
         Mo = 0
@@ -50,10 +50,10 @@ def tracking_file(part, mo, exp):
 
     assert valid_pId(part)
     assert mo in mos 
-    assert exp in exps
+    assert exp.upper() in exps
 
     if mo > 0:
-        tfilename = 'tracking_{}{}{}.txt'.format(part, int(mo), exp).upper()
+        tfilename = 'tracking_{}{}mo{}.txt'.format(part, mo, exp).upper()
     else:
         tfilename = 'tracking_{}{}.txt'.format(part, exp).upper()
 
@@ -70,6 +70,7 @@ def which_months(part):
     """
     return filter(lambda mo: have_part_mo(part, mo), mos)
 
+
 def have_part_mo(part, mo):
     """ Helper function 
         
@@ -79,7 +80,8 @@ def have_part_mo(part, mo):
         Returns False otherwise.
     """
     tfiles = [tracking_file(part, mo, exp) for exp in exps]
-    return all([os.path.isfile(tfile) for tfile in tfiles]) 
+    have = all([os.path.isfile(tfile) for tfile in tfiles]) 
+    return have
 
 # SARAH
 def load_participant_scores(csvfile):
@@ -113,16 +115,34 @@ def load_participant_scores(csvfile):
 
 gad7 = 'GAD7_score'
 scl20 = 'SCL_20'
-def load_scores(csvfile, part_mos, score_type):
-    """ Given a list of tuples PART_MOS (the first element is participant
+def load_scores(csvfile, pid_mos, score_type):
+    """ Given a list of tuples PID_MOS (the first element is participant
         id, the second is the month), load the SCORE_TYPE score for
         each from CSVFILE.
 
         SCORE_TYPE is the name of the column that contains the score.
 
+        Note: this function should only be passed pid_mo pairs for
+        which we have the given score for (use which_parts_have_score).
+
         Returns a len(part_mos)-by-1 numpy array.
     """
-    pass
+    scores_dict = {}
+    with open(csvfile,'rt', encoding = "utf8") as csvfile:
+
+        reader = csv.DictReader(csvfile)   
+        next(reader) # skip headings
+
+        for row in reader:
+            pid = row["subNum"].lower()
+            mo = int(row["time"])
+            if (pid,mo) in pid_mos:
+                score = row[score_type]
+                assert score != "NA"
+                scores_dict[(pid,mo)] = score
+
+    scores = [scores_dict[pid_mo] for pid_mo in pid_mos]
+    return scores
 
 def which_parts_have_score(csvfile, score_type):
     """ For scoring metric SCORETYPE, return all tuples 
@@ -154,8 +174,6 @@ def which_parts_have_tracking_data(folder, verbose=False):
     """ Returns all tuples (lowercase participant id, month) for which 
         we have tracking data in FOLDER. 
 
-        Set VERBOSE to True if you'd like info on how many files found,
-        etc.
     """
     vprint = print if verbose else lambda x : x
 
@@ -171,8 +189,10 @@ def which_parts_have_tracking_data(folder, verbose=False):
     vprint('number of VALID tracking files found: {}'.format(len(pid_mos)))
     pid_mos_uniq = list(set(pid_mos))
     vprint('number of (pid,mo) pairs found: {}'.format(len(pid_mos_uniq)))
+    # make sure all returned pairs have all experience types
+    pid_mos_filt = list(filter(lambda pm : have_part_mo(*pm), pid_mos_uniq))
 
-    return pid_mos_uniq
+    return pid_mos_filt
 
 
 # SARAH
@@ -251,15 +271,13 @@ def compute_fvec(tfile):
     return fvec
 
 
-def compute_fvecs_for_parts(parts, baseline_only=False):
-    """ For each of participants given by PARTS, compute features for
+def compute_fvecs_for_parts(pid_mos):
+    """ For each (pid, month) given by PID_MOS, compute features for
         each of the experience types and concatenate them to form
-        one feature vector per participant.
-
-        If BASELINE_ONLY flag is specified, compute the features from
-        only the baseline data of the participants, asserting that 
-        we have the full set of baseline data for each. In this case,
-        the N described below would be len(PARTS).
+        one feature vector per participant. 
+        
+        Note: We must have tracking data across all 5 experience types 
+        for each (pid, month) pair.
 
         There are 24 features / experience * 5 experiences = 120 features
 
@@ -268,15 +286,9 @@ def compute_fvecs_for_parts(parts, baseline_only=False):
         PARTS.
     """
     fvecs = None
-    for part in parts:
-        if baseline_only:
-            baseline_mo = 0
-            assert have_part_mo(part, baseline_mo)
-            tfiles = [tracking_file(part, baseline_mo, exp) for exp in exps]
-        else:
-            part_mos = which_months(part)
-            tfiles = [tracking_file(part, mo, exp) for exp in exps
-                                                   for mo in part_mos]
+    for pid, mo in pid_mos:
+        tfiles = [tracking_file(pid, mo, exp) for exp in exps]
+
         expvecs = [compute_fvec(tfile) for tfile in tfiles] 
         fvec = np.concatenate(expvecs, axis=1)
         if fvecs is None: 

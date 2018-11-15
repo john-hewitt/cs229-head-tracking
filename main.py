@@ -42,28 +42,39 @@ def simple_test_suite(args):
 
     testing_run = False
 
+    csvfile = '../data/participant_data.csv'
+    tfdir = '../data/Tracking/'
     if args.test_compute_fvec:
         fvec = util.compute_fvec('../data/test.txt')
         print(fvec)
         assert fvec[:6] == [28.5, 13, 0, 2, -1.5, 1]
         testing_run = True
     if args.test_compute_fvecs_for_parts:
-        parts = ['LA13272', 'MV01950']
-        X = util.compute_fvecs_for_parts(parts)
+        pid_mos = [('LA13272', 0), ('MV01950', 0)]
+        X = util.compute_fvecs_for_parts(pid_mos)
         print(X)
         testing_run = True
-    if args.test_load_scores:
-        scores_dict = util.load_participant_scores('../data/participant_data.csv')
+    if args.test_load_all_scores:
+        scores_dict = util.load_participant_scores(csvfile)
         print(scores_dict)
         testing_run = True
+    if args.test_load_scores:
+        pid_mos = util.which_parts_have_score(csvfile, util.gad7)
+        scores = util.load_scores(csvfile, pid_mos, util.gad7)
+        print(scores[:5])
+        testing_run = True
     if args.test_which_tracking:
-        pid_mos_t = util.which_parts_have_tracking_data('../data/Tracking/')
-        print('first 5 items: {}'.format(pid_mos_t[:5]))
+        pid_mos_t = util.which_parts_have_tracking_data(tfdir)
+        assert ('pa22725', 0) not in pid_mos_t
+        assert ('su33550', 0) in pid_mos_t
+        assert ('su33550', 12) in pid_mos_t
+        assert ('mv04661', 2) in pid_mos_t
+        print('first 5 items: {}'.format(pid_mos_t))
         print('number of items: {}'.format(len(pid_mos_t)))
         testing_run = True
     if args.test_which_scores:
-        pid_mos_sg = util.which_parts_have_score('../data/participant_data.csv', 'GAD7_score')
-        pid_mos_ss = util.which_parts_have_score('../data/participant_data.csv', 'SCL_20')
+        pid_mos_sg = util.which_parts_have_score(csvfile, 'GAD7_score')
+        pid_mos_ss = util.which_parts_have_score(csvfile, 'SCL_20')
         print('first 5 items: {}'.format(pid_mos_sg[:5]))
         print('number of items: {}'.format(len(pid_mos_sg)))
         testing_run = True
@@ -82,7 +93,9 @@ if __name__ == '__main__':
     parser.add_argument('--test_compute_fvecs_for_parts', default=False,
             help='Flag indicating whether to test computation of specified features')
     parser.add_argument('--test_load_scores', default=False,
-            help='Flag indicating whether to test loading of response variables')
+            help='Flag indicating whether to test loading of response variables for given (pid, month) pairs')
+    parser.add_argument('--test_load_all_scores', default=False,
+            help='Flag indicating whether to test loading of all response variables')
     parser.add_argument('--test_which_tracking', default=False,
             help='flag indicating whether to test loading of which (pid, mo) pairs have tracking data')
     parser.add_argument('--test_which_scores', default=False,
@@ -90,7 +103,7 @@ if __name__ == '__main__':
     parser.add_argument('--random-seed', default=1, type=int,
             help='Random seed to ensure replicable results.')
     parser.add_argument('--expt', type=str, default = '',
-            help='Random seed to ensure replicable results.')
+            help='String name of function containing the experiment you would like to run.')
     args = parser.parse_args()
 
     # Set random seeds so results are replicable
