@@ -8,6 +8,9 @@ import util
 import models
 import experiments
 from constants import test_participants
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set(style="darkgrid")
 
 def run_experiment(experiment_name, args):
   '''
@@ -101,3 +104,59 @@ def run_slc20_experiment(args):
       y_predict = slc_model.predict(X_hold_out)
       print("\nModel predictions: {}".format(y_predict))
       print("True labels:       {} \n".format(y_hold_out))
+
+def run_prelim_data_viz_exploration(args):
+    '''
+    Runs a bunch of visualization stuff about the GAD7 and SCL20 variables.
+    '''
+    tracking_data = '../data/Tracking/'
+    part_data = '../data/participant_data.csv'
+    
+    # load features and labels
+    # load usable (pid, mo) pairs, and make sure to remove test set
+    pid_mos_sg = util.which_parts_have_score(part_data, util.gad7)
+    pid_mos_t = util.which_parts_have_tracking_data(tracking_data)
+    pid_mos_both = list(set(pid_mos_sg) & set(pid_mos_t))
+    pid_mos_use = list(filter(lambda pm : pm[0].upper() not in test_participants, pid_mos_both))
+    print('Loaded {} (pid, mo) pairs with both tracking data and GAD7 scores.'.format(len(pid_mos_both)))
+    print('Removed {} (pid, mo) test set pairs to leave {} total to train with.'.format(len(pid_mos_both) - len(pid_mos_use), len(pid_mos_use)))
+
+    X_train_dev = util.compute_fvecs_for_parts(pid_mos_use)
+    scores = util.load_scores(part_data, pid_mos_use, util.gad7)
+    y_train_dev = np.array(scores) 
+
+    X_train_dev_avgs = np.mean(X_train_dev, 0)
+    X_train_dev_vars = np.var(X_train_dev, 0)
+    X_train_dev = (X_train_dev - X_train_dev_avgs) / X_train_dev_vars
+    sign = np.sign(X_train_dev)
+    #X_train_dev = np.sqrt(np.sqrt(np.sqrt(np.abs(X_train_dev)))) * sign
+
+    # Construct a histogram of the GAD7 data.
+    fig1, ax1 = plt.subplots()
+    ax1.hist(y_train_dev)
+    ax1.set_title('GAD7 Train/Dev Data Distribution')
+    ax1.set_xlabel('Gad7 Value')
+    ax1.set_ylabel('# of partipants')
+    fig1.tight_layout()
+    fig1.savefig('gad7_hist.png', dpi=300)
+
+    X_train_high_gad7_avg = np.mean(X_train_dev[y_train_dev >= 8], 0)
+    X_train_low_gad7_avg = np.mean(X_train_dev[y_train_dev < 8], 0)
+    fig1, ax1 = plt.subplots()
+    ax1.set_title('Avg Feature Values for High- and Low-GAD7 Participants')
+    ax1.scatter(range(len(X_train_high_gad7_avg)), X_train_high_gad7_avg, label='High-GAD7 participants')
+    ax1.scatter(range(len(X_train_high_gad7_avg)), X_train_low_gad7_avg, label='Low-GAD7 participants')
+    ax1.set_xlabel('Feature Index')
+    ax1.set_ylabel('Feature Avg')
+    fig1.tight_layout()
+    ax1.legend()
+    fig1.savefig('gad7_high_low.png', dpi=300)
+
+    #y_train_dev = util.SCL20_labels(train_dev_participants, scores)
+    #fig1, ax1 = plt.subplots()
+    #ax1.hist(y_train_dev)
+    #ax1.set_title('SCL20 Train/Dev Data Distribution')
+    #ax1.set_xlabel('SCL20 Value')
+    #ax1.set_ylabel('# of partipants')
+    #fig1.tight_layout()
+    #fig1.savefig('scl_hist.png', dpi=300)
