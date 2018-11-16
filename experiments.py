@@ -3,6 +3,7 @@ import random
 import numpy as np
 from sklearn import linear_model
 from sklearn.model_selection import train_test_split
+import sklearn
 
 import util
 import models
@@ -136,7 +137,7 @@ def run_prelim_data_viz_exploration(args):
     fig1, ax1 = plt.subplots()
     ax1.hist(y_train_dev)
     ax1.set_title('GAD7 Train/Dev Data Distribution')
-    ax1.set_xlabel('Gad7 Value')
+    ax1.set_xlabel('GAD7 Value')
     ax1.set_ylabel('# of partipants')
     fig1.tight_layout()
     fig1.savefig('gad7_hist.png', dpi=300)
@@ -189,4 +190,73 @@ def run_prelim_data_viz_exploration(args):
     plt.legend()
     plt.subplots_adjust(top=0.88)
     plt.savefig('head_tracking_example.png', dpi=300)
+
+
+def gad7_single_predictor_analysis(args):
+    '''
+    Trains/evaluates models to predict the GAD7 variable from head movement data.
+    
+    Specifically takes a single variable for each linear regression for prediction,
+    attempting to roughly sort predictors by predictiveness.
+    '''
+    tracking_data = '../data/Tracking/'
+    part_data = '../data/participant_data.csv'
+
+    # load usable (pid, mo) pairs, and make sure to remove test set
+    pid_mos_sg = util.which_parts_have_score(part_data, util.gad7)
+    pid_mos_t = util.which_parts_have_tracking_data(tracking_data)
+    pid_mos_both = list(set(pid_mos_sg) & set(pid_mos_t))
+    pid_mos_use = list(filter(lambda pm : pm[0].upper() not in test_participants, pid_mos_both))
+    print('Loaded {} (pid, mo) pairs with both tracking data and GAD7 scores.'.format(len(pid_mos_both)))
+    print('Removed {} (pid, mo) test set pairs to leave {} total to train with.'.format(len(pid_mos_both) - len(pid_mos_use), len(pid_mos_use)))
+
+    # load features and labels
+    X_train_dev = util.compute_fvecs_for_parts(pid_mos_use)
+    sklearn.preprocessing.normalize(X_train_dev)
+    #X_train_dev_avgs = np.mean(X_train_dev, 0)
+    #X_train_dev_vars = np.var(X_train_dev, 0)
+    #X_train_dev = (X_train_dev - X_train_dev_avgs) / X_train_dev_vars
+
+    scores = util.load_scores(part_data, pid_mos_use, util.gad7)
+    y_train_dev = np.array(scores) 
+
+    # Run hold-one-out evaluation on the train_dev set.
+    hoo_train_avg_errors = []
+    hoo_val_errors = []
+    feature_errors = []
+    #for movie_index in range(5):
+    for feature_index in range(X_train_dev.shape[1]):
+        #start_index = movie_index * 24
+        #end_index = (movie_index+1)*24
+        for hold_out_index, _ in enumerate(X_train_dev):
+            X_hold_out = X_train_dev[hold_out_index].reshape(1, -1)[:,feature_index].reshape(-1,1)#[:,start_index:end_index]
+            #X_hold_out = X_train_dev[hold_out_index].reshape(1, -1)#[:,start_index:end_index]
+            y_hold_out = y_train_dev[hold_out_index]
+
+            X_hold_one_out_train = np.array(X_train_dev[:hold_out_index].tolist() 
+                + X_train_dev[hold_out_index+1:].tolist())[:,feature_index].reshape(-1,1)#[:,start_index:end_index] # Take out the HOO example
+               #+ X_train_dev[hold_out_index+1:].tolist())#[:,start_index:end_index] # Take out the HOO example
+            y_hold_one_out_train = np.array(y_train_dev[:hold_out_index].tolist() 
+                + y_train_dev[hold_out_index+1:].tolist()) # Take out the HOO example
+
+            # Train model
+            gad_model = models.RegressionGAD7Model()
+            gad_model.fit(X_hold_one_out_train, y_hold_one_out_train)
+
+            y_train_predict = gad_model.predict(X_hold_one_out_train)
+            y_train_error = np.mean(np.square(y_hold_one_out_train - y_train_predict))
+            hoo_train_avg_errors.append(y_train_error)
+
+            # Predict on the held-out example
+            y_predict = gad_model.predict(X_hold_out)
+            y_val_error = np.square(y_predict - y_hold_out)
+            hoo_val_errors.append(y_val_error)
+            #print("\nModel predictions: {} \nTrue labels:       {} \n".format(y_predict, y_hold_out))
+        print("Avg GAD7 train error for feature {}: {}".format(feature_index, np.mean(hoo_train_avg_errors)))
+        print("Avg GAD7 hold-one-out val for feture {}: {}".format(feature_index, np.mean(hoo_val_errors)))
+        #print("Avg GAD7 train error for feature {}: {}".format(movie_index, np.mean(hoo_train_avg_errors)))
+        #print("Avg GAD7 hold-one-out val for feture {}: {}".format(movie_index, np.mean(hoo_val_errors)))
+        feature_errors.append(np.mean(hoo_val_errors))
+    for index, error in sorted(list(enumerate(feature_errors)), key=lambda x: x[1]):
+      print(index, error)
 

@@ -262,8 +262,8 @@ def compute_fvec(tfile):
     rotsigmas = np.var(rot, axis=0) 
 
     delta = np.absolute(np.diff(rot, axis=0))
-    deltasums = np.sum(delta, axis=0)
-    deltasigmas = np.var(delta, axis=0)
+    deltasums = np.log(np.sum(delta, axis=0))
+    deltasigmas = np.log(np.var(delta, axis=0))
 
     # shape output
     fvec = np.concatenate([rotmus, rotsigmas, deltasums, deltasigmas])
