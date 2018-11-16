@@ -109,6 +109,7 @@ def run_prelim_data_viz_exploration(args):
     '''
     Runs a bunch of visualization stuff about the GAD7 and SCL20 variables.
     '''
+    print('Printing preliminary data exploration graphs')
     tracking_data = '../data/Tracking/'
     part_data = '../data/participant_data.csv'
     
@@ -160,3 +161,32 @@ def run_prelim_data_viz_exploration(args):
     #ax1.set_ylabel('# of partipants')
     #fig1.tight_layout()
     #fig1.savefig('scl_hist.png', dpi=300)
+
+    # Construct graphs of one single high-anxiety and one single low-anxiety participant.
+    high_path = '../data/Tracking/TRACKING_MV08176R.TXT'
+    high_val = 15
+
+    low_path  = '../data/Tracking/TRACKING_MV0764712MOR.TXT'
+    low_val = 2
+
+    high_lines = [x.split('\t') for x in open(high_path)]
+    high_lines = [(x[0], eval(x[1]), eval(x[2])) for x in high_lines]
+    low_lines = [x.split('\t') for x in open(low_path)]
+    low_lines = [(x[0], eval(x[1]), eval(x[2])) for x in low_lines]
+
+    fig, axes = plt.subplots(3,2, figsize=(15,6))
+
+    channel_names = ['Left Channel', 'Right Channel']
+    axis_names = ['Pitch', 'Roll', 'Yaw']
+
+    for axis_index in [0,1,2]:
+      for channel_index in [0,1]:
+        axes[axis_index][channel_index].scatter(range(len(high_lines)), [x[channel_index+1][axis_index] for x in high_lines], label='High-Anxiety Participant, GAD7=15')
+        axes[axis_index][channel_index].scatter(range(len(low_lines)), [x[channel_index+1][axis_index] for x in low_lines], label='Low-Anxiety Participant, GAD7=2')
+        axes[axis_index][channel_index].set_title(channel_names[channel_index] + ' ' + axis_names[axis_index])
+    plt.tight_layout()
+    plt.suptitle('Raw Head Movement Data for Sample High-GAD7 and Low-GAD7 Participants')
+    plt.legend()
+    plt.subplots_adjust(top=0.88)
+    plt.savefig('head_tracking_example.png', dpi=300)
+
