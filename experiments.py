@@ -2,7 +2,7 @@ import random
 
 import numpy as np
 from sklearn import linear_model
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold
 import sklearn
 
 import util
@@ -22,6 +22,55 @@ def run_experiment(experiment_name, args):
   print('Running experiment: {}'.format(experiment_name))
   experiment_function(args)
 
+def gad7_kfold_10(args):
+  errs = [gad7_kfold(args) for x in range(10)]
+
+
+def gad7_kfold(args):
+    '''
+        Trains/evaluates models to predict the GAD7 variable from head movement data.
+        Performs k-fold cross-validation.
+        
+        param args: a dictionary of arguments to be used in running this experiment.
+    '''
+    tracking_data = '../data/Tracking/'
+    part_data = '../data/participant_data.csv'
+
+    # load usable (pid, mo) pairs, and make sure to remove test set
+    pid_mos_sg = util.which_parts_have_score(part_data, util.gad7)
+    pid_mos_t = util.which_parts_have_tracking_data(tracking_data)
+    pid_mos_both = list(set(pid_mos_sg) & set(pid_mos_t))
+    pid_mos_use = list(filter(lambda pm : pm[0].upper() not in test_participants, pid_mos_both))
+    print('Loaded {} (pid, mo) pairs with both tracking data and GAD7 scores.'.format(len(pid_mos_both)))
+    print('Removed {} (pid, mo) test set pairs to leave {} total to train with.'.format(len(pid_mos_both) - len(pid_mos_use), len(pid_mos_use)))
+
+    X_train_dev = util.compute_fvecs_for_parts(pid_mos_use)[:,0:1]
+    scores = util.load_scores(part_data, pid_mos_use, util.gad7)
+    y_train_dev = np.array(scores) 
+
+    kf = KFold(n_splits=118, random_state=1)
+    kf_train_avg_errors = []
+    kf_val_errors = []
+    for train_index, test_index in kf.split(X_train_dev):
+      X_train, X_dev = X_train_dev[train_index], X_train_dev[test_index]
+      y_train, y_dev = y_train_dev[train_index], y_train_dev[test_index]
+      # Train model
+      gad_model = models.RegressionGAD7Model()
+      gad_model.fit(X_train, y_train)
+
+      y_train_predict = gad_model.predict(X_train)
+      y_train_error = np.square(y_train - y_train_predict)
+      kf_train_avg_errors.extend(y_train_error)
+
+      # Predict on the held-out example
+      y_predict = gad_model.predict(X_dev)
+      y_val_error = np.square(y_predict - y_dev)
+      kf_val_errors.extend(y_val_error)
+      #print("\nModel predictions: {} \nTrue labels:       {} \n".format(y_predict, y_hold_out))
+    print("Avg GAD7 train error: {}".format(np.mean(kf_train_avg_errors)))
+    print("Avg GAD7 kfold val: {}".format(np.mean(kf_val_errors)))
+    return np.mean(kf_val_errors)
+
 def gad7_hold_one_out(args):
     '''
     Trains/evaluates models to predict the GAD7 variable from head movement data.
@@ -40,7 +89,7 @@ def gad7_hold_one_out(args):
     print('Removed {} (pid, mo) test set pairs to leave {} total to train with.'.format(len(pid_mos_both) - len(pid_mos_use), len(pid_mos_use)))
 
     # load features and labels
-    X_train_dev = util.compute_fvecs_for_parts(pid_mos_use)
+    X_train_dev = util.compute_fvecs_for_parts(pid_mos_use)[:,0:2]
     scores = util.load_scores(part_data, pid_mos_use, util.gad7)
     y_train_dev = np.array(scores) 
 
@@ -66,6 +115,7 @@ def gad7_hold_one_out(args):
 
       # Predict on the held-out example
       y_predict = gad_model.predict(X_hold_out)
+      print(y_predict)
       y_val_error = np.square(y_predict - y_hold_out)
       hoo_val_errors.append(y_val_error)
       #print("\nModel predictions: {} \nTrue labels:       {} \n".format(y_predict, y_hold_out))
