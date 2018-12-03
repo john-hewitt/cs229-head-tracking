@@ -47,7 +47,7 @@ def gad7_kfold_classification(args):
 
     X_train_dev = util.compute_fvecs_for_parts(pid_mos_use, args.featurization)#[:,1:10]
     scores = util.load_scores(part_data, pid_mos_use, util.gad7)
-    y_train_dev = np.array(scores) > 10
+    y_train_dev = np.array(scores) >= 10
 
     kf = KFold(n_splits=118, random_state=1)
     kf_train_avg_errors = []
