@@ -10,6 +10,7 @@ import models
 import experiments
 from constants import test_participants
 import matplotlib.pyplot as plt
+from scipy.stats import mode
 import seaborn as sns
 sns.set(style="darkgrid")
 
@@ -25,6 +26,68 @@ def run_experiment(experiment_name, args):
 def gad7_kfold_10(args):
   errs = [gad7_kfold(args) for x in range(10)]
 
+def gad7_kfold_classification(args):
+    '''
+        Trains/evaluates models to predict the GAD7 variable from head movement data.
+        Performs k-fold cross-validation.
+        
+        param args: a dictionary of arguments to be used in running this experiment.
+    '''
+    tracking_data = '../data/Tracking/'
+    part_data = '../data/participant_data.csv'
+
+    # load usable (pid, mo) pairs, and make sure to remove test set
+    pid_mos_sg = util.which_parts_have_score(part_data, util.gad7)
+    pid_mos_t = util.which_parts_have_tracking_data(tracking_data)
+    pid_mos_both = list(set(pid_mos_sg) & set(pid_mos_t))
+    pid_mos_use = list(filter(lambda pm : pm[0].upper() not in test_participants, pid_mos_both))
+    #pid_mos_use = list(filter(lambda pm: pm[1] == 0, pid_mos_use))
+    print('Loaded {} (pid, mo) pairs with both tracking data and GAD7 scores.'.format(len(pid_mos_both)))
+    print('Removed {} (pid, mo) test set pairs to leave {} total to train with.'.format(len(pid_mos_both) - len(pid_mos_use), len(pid_mos_use)))
+
+    X_train_dev = util.compute_fvecs_for_parts(pid_mos_use, args.featurization)#[:,1:10]
+    scores = util.load_scores(part_data, pid_mos_use, util.gad7)
+    y_train_dev = np.array(scores) > 10
+
+    kf = KFold(n_splits=118, random_state=1)
+    kf_train_avg_errors = []
+    kf_val_errors = []
+    predictions = []
+    for train_index, test_index in kf.split(X_train_dev):
+      X_train, X_dev = X_train_dev[train_index], X_train_dev[test_index]
+      y_train, y_dev = y_train_dev[train_index], y_train_dev[test_index]
+
+      # Train model
+      gad_model = models.ClassificationGAD7Model()
+      gad_model.fit(X_train, y_train)
+
+      y_train_predict = gad_model.predict(X_train) > .5
+      y_train_error = np.mean(np.abs(y_train ^ y_train_predict))
+      kf_train_avg_errors.append(y_train_error)
+
+      # Predict on the held-out example
+      y_predict = gad_model.predict(X_dev)
+      predictions.append(y_predict[0])
+      y_val_error = np.mean(np.abs(y_predict ^ y_dev))
+      kf_val_errors.append(y_val_error)
+      #print("\nModel predictions: {} \nTrue labels:       {} \n".format(y_predict, y_hold_out))
+    #print("Avg GAD7 train error: {}".format(np.mean(kf_train_avg_errors)))
+    print("GAD7 F1: {}".format(sklearn.metrics.f1_score(y_train_dev, predictions)))
+    print("GAD7 prec: {}".format(sklearn.metrics.precision_score(y_train_dev, predictions)))
+    print("GAD7 recall: {}".format(sklearn.metrics.recall_score(y_train_dev, predictions)))
+    always_predict_true = [1 for x in y_train_dev]
+    #print(y_train_dev)
+    #print(predictions)
+    #print("Always predict false: {}".format(np.mean(np.abs(y_train_dev ^ mode(y_train_dev)[0]))))
+    print("Always predict false f1: {}".format(sklearn.metrics.f1_score(y_train_dev, always_predict_true)))
+    print("Always predict false prec: {}".format(sklearn.metrics.precision_score(y_train_dev, always_predict_true)))
+    print("Always predict false recall: {}".format(sklearn.metrics.recall_score(y_train_dev, always_predict_true)))
+    random_predict = np.random.randint(0,2,y_train_dev.size)
+    print("Predict randomly f1: {}".format(sklearn.metrics.f1_score(y_train_dev, random_predict)))
+    print("Predict randomly prec: {}".format(sklearn.metrics.precision_score(y_train_dev, random_predict)))
+    print("Predict randomly recall: {}".format(sklearn.metrics.recall_score(y_train_dev, random_predict)))
+    #print("Avg GAD7 kfold val: {}".format(np.mean(kf_val_errors)))
+    return np.mean(kf_val_errors)
 
 def gad7_kfold(args):
     '''
@@ -44,7 +107,7 @@ def gad7_kfold(args):
     print('Loaded {} (pid, mo) pairs with both tracking data and GAD7 scores.'.format(len(pid_mos_both)))
     print('Removed {} (pid, mo) test set pairs to leave {} total to train with.'.format(len(pid_mos_both) - len(pid_mos_use), len(pid_mos_use)))
 
-    X_train_dev = util.compute_fvecs_for_parts(pid_mos_use)[:,0:1]
+    X_train_dev = util.compute_fvecs_for_parts(pid_mos_use)[:,1:2]
     scores = util.load_scores(part_data, pid_mos_use, util.gad7)
     y_train_dev = np.array(scores) 
 
@@ -54,6 +117,8 @@ def gad7_kfold(args):
     for train_index, test_index in kf.split(X_train_dev):
       X_train, X_dev = X_train_dev[train_index], X_train_dev[test_index]
       y_train, y_dev = y_train_dev[train_index], y_train_dev[test_index]
+      print(X_dev, y_dev)
+
       # Train model
       gad_model = models.RegressionGAD7Model()
       gad_model.fit(X_train, y_train)

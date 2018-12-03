@@ -236,6 +236,37 @@ def SCL20_threshold(scores):
     return scores
 
 
+def compute_fvec_magnitude_freqs(tfile):
+    """ Takes in a tracking file path, and computes the feature vector
+        corresponding to head movement data for each experience type. 
+        
+        The featurization is described in the README.
+    """
+    with open(tfile) as tsvin:
+        tsvin = csv.reader(tsvin, delimiter='\t')
+        
+        rot = [] 
+        for index, row in enumerate(tsvin):
+            ch1 = row[1]
+            ch2 = row[2]
+            roti = json.loads(ch1) + json.loads(ch2)
+            rot.append(roti)
+
+    # compute features
+    rot = np.array(rot)
+
+    delta = np.absolute(np.diff(rot, axis=0))
+    sums = []
+    sums.append(np.sum((delta > 10), 0))
+    sums.append(np.sum((delta < 10) & (delta >1), 0))
+    sums.append(np.sum((delta < 1) & (delta >.1), 0))
+    sums.append(np.sum((delta < .1) & (delta >.01), 0))
+    sums.append(np.sum((delta < .01) & (delta >.001), 0))
+    sums.append(np.sum((delta < .001) , 0))
+
+    fvec = (np.array(sums) / np.sum(sums, axis=0)).flatten()
+    return fvec
+
 def compute_fvec(tfile):
     """ Takes in a tracking file path, and computes the feature vector
         corresponding to head movement data for each experience type. 
@@ -250,7 +281,7 @@ def compute_fvec(tfile):
         tsvin = csv.reader(tsvin, delimiter='\t')
         
         rot = [] 
-        for row in tsvin:
+        for index, row in enumerate(tsvin):
             ch1 = row[1]
             ch2 = row[2]
             roti = json.loads(ch1) + json.loads(ch2)
@@ -258,20 +289,19 @@ def compute_fvec(tfile):
 
     # compute features
     rot = np.array(rot)
-    rotmus = np.mean(rot, axis=0)
     rotsigmas = np.var(rot, axis=0) 
 
     delta = np.absolute(np.diff(rot, axis=0))
-    deltasums = np.log(np.sum(delta, axis=0))
-    deltasigmas = np.log(np.var(delta, axis=0))
+    deltasums = np.sum(delta, axis=0) / rot.shape[0]
+    deltasigmas = np.var(delta, axis=0)
 
     # shape output
-    fvec = np.concatenate([rotmus, rotsigmas, deltasums, deltasigmas])
+    fvec = np.concatenate([rotsigmas, deltasums, deltasigmas])
     fvec = np.expand_dims(fvec, 0)
     return fvec
 
 
-def compute_fvecs_for_parts(pid_mos):
+def compute_fvecs_for_parts(pid_mos, featurization):
     """ For each (pid, month) given by PID_MOS, compute features for
         each of the experience types and concatenate them to form
         one feature vector per participant. 
@@ -289,7 +319,12 @@ def compute_fvecs_for_parts(pid_mos):
     for pid, mo in pid_mos:
         tfiles = [tracking_file(pid, mo, exp) for exp in exps]
 
-        expvecs = [compute_fvec(tfile) for tfile in tfiles] 
+        if featurization == 'summary_stats':
+          expvecs = [compute_fvec(tfile) for tfile in tfiles] 
+        elif featurization == 'norm_hist':
+          expvecs = [compute_fvec_magnitude_freqs(tfile) for tfile in tfiles]
+        else:
+          raise ValueError("Unknown featurization method: {}".format(featurization))
         fvec = np.concatenate(expvecs, axis=1)
         if fvecs is None: 
             fvecs = np.array(fvec)

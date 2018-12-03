@@ -5,7 +5,9 @@ import util
 from sklearn import tree
 from sklearn.ensemble import AdaBoostRegressor
 from sklearn import linear_model
-from sklearn.linear_model import LogisticRegressionCV
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.ensemble import RandomForestClassifier
 import numpy as np
 import random
 
@@ -57,16 +59,11 @@ class RegressionGAD7Model(Model):
         """        
 
         # Need to make sure we have model predicitions in the appropriate range [0 - ~25?]
-        clf = linear_model.Lasso(alpha = 0.00000001, max_iter=1e8)
+        clf = linear_model.Lasso(alpha = 0.0001, max_iter=1e8)
     #    clf = tree.DecisionTreeRegressor(min_samples_leaf=8)
         #clf = AdaBoostRegressor(max_depth = 4,  n_estimators = 100)
         clf.fit(X, y)
 
-        # Get theta
-    #      theta_coeff = clf.coef_
-
-        # Save the fit model + coeffs
-    #    self.theta_coeff = theta_coeff
         self.clf = clf
         self.trained = True
 
@@ -82,7 +79,7 @@ class RegressionGAD7Model(Model):
         return np.around(self.clf.predict(x), decimals = 0)
     
 
-class ClassificationSLC20Model(Model):
+class ClassificationGAD7Model(Model):
     '''
     Class containing functions for fitting/predicting a classification model,
     specifically for the GAD7 variable but this is somewhat arbitrary.
@@ -92,29 +89,43 @@ class ClassificationSLC20Model(Model):
         """ Fits a classification model to predict major depressive disorder
         based on N participants' head movement data.
         
-        Returns a tuple (X, Y, Theta) where X is a N-by-120 numpy array,
-        Y is a N-by-1, and Theta is 120-by-1.
+        Returns a tuple (X, Y, Theta) where X is a N-by-M numpy array,
 
-        Note: we can change this architecture up - I'm open to suggestions :)
+        In particular, at this point fits _three_ different types of classifiers
+        for ensembling.
         """
         
         # Train logistic regression model                   
-        clf = LogisticRegressionCV(cv = 4, random_state=0, solver='newton-cg', penalty = 'l2') # lbfgs
-        clf.fit(X, y)
-
-        # get theta                                     
-        theta_coeff = clf.coef_
-
-        # Save the fit model + coeffs                                
-        self.theta_coeff = theta_coeff
-        self.clf = clf
+        self.logreg_clf = LogisticRegression(max_iter=1000000000) # lbfgs
+        self.logreg_clf.fit(X, y)
+        self.multinom_clf = MultinomialNB() # lbfgs
+        self.multinom_clf.fit(X, y)
+        self.tree_clf = tree.DecisionTreeClassifier()
+        self.tree_clf.fit(X,y)
+        #clf = RandomForestClassifier(n_estimators=3, bootstrap=False)
         self.trained = True
 
-        return theta_coeff
+        #return theta_coeff
 
 
     def predict(self, x):
         """
-        
+        Prediction through ensemble majority vote. 
         """
-        return self.clf.predict(x)
+        pred_1 = self.logreg_clf.predict(x)
+        pred_2 = self.multinom_clf.predict(x)
+        pred_3 = self.tree_clf.predict(x)
+        #pred = (pred_1 ^ pred_2 ^ pred_3)
+        #print(pred_1*1+pred_2*1+pred_3*1)
+        pred = (pred_3*1 + pred_2*1 + pred_1*1)/2 > .5
+        #pred = pred_3
+        #pred = (pred_1*1.1 + pred_2*1.1 + pred_3*2)/(2+1.1+1.1) > .5
+        #pred = pred_3
+
+        #print()
+        #print(pred_1, pred_2, pred_3)
+        #print(pred)
+        #input()
+        
+        return pred
+        #return self.clf.predict(x)
