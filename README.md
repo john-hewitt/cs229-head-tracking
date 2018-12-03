@@ -50,3 +50,6 @@ so no need to set that.) This is set to 1 by default; re-running with the same s
 lead to identical results.
 - `--test*`: All flag of this form refer to code testing procedures. Refer to their `--help`
 strings for more information. No tests are run by default.
+
+- `--featurization`: This specifies which type of featurization to perform.
+ The valid options are `summary_stats` and `norm_hist`. Summary stats provides the variance and length-normalized sum of head radians traveled for each of roll/pitch/yaw for each of 2 sensors. The `norm_hist`, or normalized histogram, provides something of a delta-histogram. First the absolute value of the delta between each row of head positions is taken. Then this is bucketed (somewhat arbitrarily) into discrete buckets. I chose the buckets to have reasonable variation -- it's a log scale. then, for each of roll/pitch/yaw for each of the 2 sensors, the number of deltas in each bucket is computed. These values are normalized by the total number of timesteps. Viola . The idea here is that if a large percent of your head movements are high-velocity (large delta) then you are possibly anxious.

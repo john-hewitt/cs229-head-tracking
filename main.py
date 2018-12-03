@@ -93,6 +93,8 @@ if __name__ == '__main__':
             help='flag indicating whether to test loading which (pid, mo) pairs have GAD7/SCL20 scores')
     parser.add_argument('--random-seed', default=1, type=int,
             help='Random seed to ensure replicable results.')
+    parser.add_argument('--featurization', default='summary_stats', type=str,
+            help='How to featurize the data. Either summary_stats or norm_hist')
     parser.add_argument('--expt', type=str, default = '',
             help='String name of function containing the experiment you would like to run.')
     args = parser.parse_args()
