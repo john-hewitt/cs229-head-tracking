@@ -265,6 +265,7 @@ def compute_fvec_magnitude_freqs(tfile):
     sums.append(np.sum((delta < .001) , 0))
 
     fvec = (np.array(sums) / np.sum(sums, axis=0)).flatten()
+    fvec = np.expand_dims(fvec, 0)
     return fvec
 
 def compute_fvec(tfile):
@@ -320,14 +321,14 @@ def compute_fvecs_for_parts(pid_mos, featurization):
         tfiles = [tracking_file(pid, mo, exp) for exp in exps]
 
         if featurization == 'summary_stats':
-          expvecs = [compute_fvec(tfile) for tfile in tfiles] 
+          expvecs = [compute_fvec(tfile) for tfile in tfiles]
         elif featurization == 'norm_hist':
           expvecs = [compute_fvec_magnitude_freqs(tfile) for tfile in tfiles]
         else:
           raise ValueError("Unknown featurization method: {}".format(featurization))
         fvec = np.concatenate(expvecs, axis=1)
         if fvecs is None: 
-            fvecs = np.array(fvec)
+          fvecs = np.array(fvec)
         else:
             fvecs = np.concatenate([fvecs, fvec], axis=0)
         

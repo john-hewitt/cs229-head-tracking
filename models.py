@@ -42,6 +42,7 @@ class Model:
         raise NotImplementedError
 
 
+
 class RegressionGAD7Model(Model):
     '''
     Class containing functions for fitting/predicting a regression model,
@@ -78,6 +79,42 @@ class RegressionGAD7Model(Model):
         """
         return np.around(self.clf.predict(x), decimals = 0)
     
+
+
+
+
+class LearnedEnsembleClassificationGAD7Model(Model):
+  '''
+  Class containing functions for fitting/predicting a classification model,
+  where each prediction is a learned ensemble of a set of models specified
+  at construction.
+  '''
+
+  def __init__(self, model_retriever, weights, threshold):
+    self.model_retriever = model_retriever
+    self.weights = weights
+    self.threshold = threshold
+
+  def fit(self, X, y):
+    '''
+    Fits all models given by the model_retriever specified
+    (models should be re-retrieved each time as otherwise they'll get stale)
+    '''
+    self.models = []
+    for model in self.model_retriever():
+      self.models.append(model)
+      model.fit(X,y)
+
+  def predict(self, x):
+    '''
+    Prediction through learned ensemble and cutoff
+    '''
+    predictions = np.array([model.predict(x) for model in self.models])
+    weighted_predictions = np.multiply(np.expand_dims(self.weights,1), predictions)
+    decision = np.sum(weighted_predictions, 0) > self.threshold
+    return decision
+
+
 
 class ClassificationGAD7Model(Model):
     '''

@@ -5,6 +5,11 @@ from sklearn import linear_model
 from sklearn.model_selection import train_test_split, KFold
 import sklearn
 
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
+
 import util
 import models
 import experiments
@@ -13,6 +18,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import mode
 import seaborn as sns
 sns.set(style="darkgrid")
+
 
 def run_experiment(experiment_name, args):
   '''
@@ -26,7 +32,50 @@ def run_experiment(experiment_name, args):
 def gad7_kfold_10(args):
   errs = [gad7_kfold(args) for x in range(10)]
 
-def gad7_kfold_classification(args):
+
+class GAD7AutoHyperparameterOptimization():
+  '''
+  Class for conducting automatic hyperparameter optimization
+  where each hyperparameter is an ``expert" trained off of different data.
+  '''
+  def __init__(self, args, models=None):
+    self.args = args
+    self.model_count = len(list(self.model_retriever()))
+    self.best_weights = [1 for x in models]
+    self.trial_set = []
+    self.trials_per_study = 10
+
+  def optimize(self, studies=30):
+    for study_index in range(studies):
+      weights, threshold = self.sample_hyperparameters()
+      print('Trying weights {}, threshold {}'.format(weights, threshold))
+      results = gad7_kfold_classification(self.args, 
+          prespecified_model=models.LearnedEnsembleClassificationGAD7Model(self.model_retriever, weights, threshold))
+      self.trial_set.append((weights, threshold, results['model_f1'], results['model_precision'], results['model_recall']))
+        #print(results)
+      #input()
+
+  def sample_hyperparameters(self):
+    #weights = np.random.normal(size=self.model_count)
+    weights = np.random.gamma(2, scale=1.0, size=self.model_count)
+    weight_sum = np.sum(weights)
+    weights = weights / weight_sum
+    threshold = np.random.uniform(low=.2, high=.8)
+    return weights, threshold
+
+  @staticmethod
+  def model_retriever():
+    yield LogisticRegression(max_iter=1000000, solver='liblinear')
+    yield MultinomialNB()
+    yield DecisionTreeClassifier()
+
+
+def gad7_kfold_classification_expt(args):
+  hpo_model = GAD7AutoHyperparameterOptimization(args, [])
+  hpo_model.optimize()
+
+
+def gad7_kfold_classification(args, prespecified_model=None):
     '''
         Trains/evaluates models to predict the GAD7 variable from head movement data.
         Performs k-fold cross-validation.
@@ -58,7 +107,10 @@ def gad7_kfold_classification(args):
       y_train, y_dev = y_train_dev[train_index], y_train_dev[test_index]
 
       # Train model
-      gad_model = models.ClassificationGAD7Model()
+      if prespecified_model:
+        gad_model = prespecified_model
+      else:
+        gad_model = models.ClassificationGAD7Model()
       gad_model.fit(X_train, y_train)
 
       y_train_predict = gad_model.predict(X_train) > .5
@@ -73,32 +125,58 @@ def gad7_kfold_classification(args):
       #print("\nModel predictions: {} \nTrue labels:       {} \n".format(y_predict, y_hold_out))
     #print("Avg GAD7 train error: {}".format(np.mean(kf_train_avg_errors)))
     print()
-    print("GAD7 F1: {}".format(sklearn.metrics.f1_score(y_train_dev, predictions)))
-    print("GAD7 prec: {}".format(sklearn.metrics.precision_score(y_train_dev, predictions)))
-    print("GAD7 recall: {}".format(sklearn.metrics.recall_score(y_train_dev, predictions)))
-    always_predict_true = [1 for x in y_train_dev]
+    model_f1 = sklearn.metrics.f1_score(y_train_dev, predictions)
+    model_precision = sklearn.metrics.precision_score(y_train_dev, predictions)
+    model_recall = sklearn.metrics.recall_score(y_train_dev, predictions)
+    print("GAD7 F1: {}".format(model_f1))
+    print("GAD7 prec: {}".format(model_precision))
+    print("GAD7 recall: {}".format(model_recall))
     #print(y_train_dev)
     #print(predictions)
     #print("Always predict false: {}".format(np.mean(np.abs(y_train_dev ^ mode(y_train_dev)[0]))))
     print()
-    print("Always predict false f1: {}".format(sklearn.metrics.f1_score(y_train_dev, always_predict_true)))
-    print("Always predict false prec: {}".format(sklearn.metrics.precision_score(y_train_dev, always_predict_true)))
-    print("Always predict false recall: {}".format(sklearn.metrics.recall_score(y_train_dev, always_predict_true)))
-    random_predict = np.random.randint(0,2,y_train_dev.size)
+    always_predict_true = [1 for x in y_train_dev]
+    always_true_f1 = sklearn.metrics.f1_score(y_train_dev, always_predict_true)
+    always_true_precision = sklearn.metrics.precision_score(y_train_dev, always_predict_true)
+    always_true_recall = sklearn.metrics.recall_score(y_train_dev, always_predict_true)
+    print("Always predict true f1: {}".format(always_true_f1))
+    print("Always predict true prec: {}".format(always_true_precision))
+    print("Always predict true recall: {}".format(always_true_recall))
     print()
-    print("Predict randomly f1: {}".format(sklearn.metrics.f1_score(y_train_dev, random_predict)))
-    print("Predict randomly prec: {}".format(sklearn.metrics.precision_score(y_train_dev, random_predict)))
-    print("Predict randomly recall: {}".format(sklearn.metrics.recall_score(y_train_dev, random_predict)))
+    random_predict = np.random.randint(0,2,y_train_dev.size)
+    random_true_f1 = sklearn.metrics.f1_score(y_train_dev, random_predict)
+    random_true_precision = sklearn.metrics.precision_score(y_train_dev, random_predict)
+    random_true_recall = sklearn.metrics.recall_score(y_train_dev, random_predict)
+    print("Predict randomly f1: {}".format(random_true_f1))
+    print("Predict randomly prec: {}".format(random_true_precision))
+    print("Predict randomly recall: {}".format(random_true_recall))
     print()
     print()
     random_20_percent = np.random.uniform(0,1, size=y_train_dev.size) <= .2373
-    print("Predict random 20% have anxiety f1: {}".format(sklearn.metrics.f1_score(y_train_dev, random_20_percent)))
-    print("Predict random 20% have anxiety prec: {}".format(sklearn.metrics.precision_score(y_train_dev, random_20_percent)))
-    print("Predict random 20% have anxiety recall: {}".format(sklearn.metrics.recall_score(y_train_dev, random_20_percent)))
+    random_20_f1 = sklearn.metrics.f1_score(y_train_dev, random_20_percent)
+    random_20_precision = sklearn.metrics.precision_score(y_train_dev, random_20_percent)
+    random_20_recall = sklearn.metrics.recall_score(y_train_dev, random_20_percent)
+    print("Predict random 20% have anxiety f1: {}".format(random_20_f1))
+    print("Predict random 20% have anxiety prec: {}".format(random_20_precision))
+    print("Predict random 20% have anxiety recall: {}".format(random_20_recall))
     print()
     print(np.mean(y_train_dev))
     #print("Avg GAD7 kfold val: {}".format(np.mean(kf_val_errors)))
-    return np.mean(kf_val_errors)
+    results = {
+        'model_f1': model_f1,
+        'model_precision': model_precision,
+        'model_recall': model_recall,
+        'always_true_f1': always_true_f1,
+        'always_true_precision': always_true_precision,
+        'always_true_recall': always_true_recall,
+        'random_true_f1': random_true_f1,
+        'random_true_precision':random_true_precision,
+        'random_true_recall':random_true_recall,
+        'random_20_f1':random_20_f1,
+        'random_20_precision':random_20_precision,
+        'random_20_recall':random_20_recall
+        }
+    return results
 
 def gad7_kfold(args):
     '''
