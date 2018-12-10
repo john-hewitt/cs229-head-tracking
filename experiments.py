@@ -26,6 +26,39 @@ def run_experiment(experiment_name, args):
 def gad7_kfold_10(args):
   errs = [gad7_kfold(args) for x in range(10)]
 
+def freq_analysis(args):
+    tfile = '../data/Tracking/tracking_30677R.txt'
+    tfile = '../data/Tracking/tracking_MV0087812MOR.txt'
+
+    fvec = util.compute_freq_fvec(tfile) 
+    print(fvec)
+
+    fs = 1000
+    N = 20
+    dfs = np.fft.fftfreq(N, d=1/float(fs))
+
+    data, diffs = util.load_channels(tfile)
+    data_f = np.fft.fft(data, n=N, axis=0)
+    diffs_f = np.fft.fft(diffs, n=N, axis=0)
+    plt.subplot(2,2,1)
+    plt.title('Data')
+    for i in range(3):
+        plt.plot(data[:,i], alpha=.8)
+    plt.subplot(2,2,2)
+    plt.title('DFT of data')
+    for i in range(3):
+        plt.plot(dfs, np.absolute(data_f[:,i]), alpha=.8)
+    plt.legend(['yaw','pitch','roll'])
+    plt.subplot(2,2,3)
+    plt.title('Deltas')
+    for i in range(3):
+        plt.plot(diffs[:,i], alpha=.8)
+    plt.subplot(2,2,4)
+    plt.title('DFT of deltas')
+    for i in range(3):
+        plt.plot(dfs, np.absolute(diffs_f[:,i]), alpha=.8)
+    plt.show()
+
 def gad7_kfold_classification(args):
     '''
         Trains/evaluates models to predict the GAD7 variable from head movement data.
