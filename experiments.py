@@ -11,8 +11,8 @@ import experiments
 from constants import test_participants
 import matplotlib.pyplot as plt
 from scipy.stats import mode
-import seaborn as sns
-sns.set(style="darkgrid")
+#import seaborn as sns
+#sns.set(style="darkgrid")
 
 def run_experiment(experiment_name, args):
   '''
