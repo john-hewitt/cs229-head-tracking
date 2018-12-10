@@ -267,6 +267,62 @@ def compute_fvec_magnitude_freqs(tfile):
     fvec = (np.array(sums) / np.sum(sums, axis=0)).flatten()
     return fvec
 
+def load_channels(tfile):
+    """ Returns (data, deltas), both ~N-by-6 numpy arrays created from
+        the 6-channel data associated with each of PID_MOS.
+    """
+    # load data from file
+    with open(tfile) as tsvin:
+        tsvin = csv.reader(tsvin, delimiter='\t')
+        
+        rot = [] 
+        for index, row in enumerate(tsvin):
+            ch1 = row[1]
+            ch2 = row[2]
+            roti = json.loads(ch1) + json.loads(ch2)
+            rot.append(roti)
+    delta = np.absolute(np.diff(rot, axis=0))
+    rot = np.array(rot)
+    delta = np.array(delta)
+    print(rot.shape)
+    print(delta.shape)
+    return rot, delta
+
+def compute_freq_fvec(tfile, N=20):
+    """ Takes in a tracking file path, and computes the feature vector
+        corresponding to the DFT of the head movement data for each 
+        experience type. 
+
+        Takes a N-pt DFT of each channel data and difference data.
+        
+        There are N*2 features / time-series * 3 time-series / channel
+        * 2 channels = 12N features.
+
+        Returns the feature vector as a 1-by-12N numpy array.
+    """
+    # load data from file
+    with open(tfile) as tsvin:
+        tsvin = csv.reader(tsvin, delimiter='\t')
+        
+        rot = [] 
+        for index, row in enumerate(tsvin):
+            ch1 = row[1]
+            ch2 = row[2]
+            roti = json.loads(ch1) + json.loads(ch2)
+            rot.append(roti)
+
+    # compute features
+    rot = np.array(rot)
+    delta = np.absolute(np.diff(rot, axis=0))
+
+    rot_f = np.fft.fft(rot, n=N, axis=0)
+    delta_f = np.fft.fft(delta, n=N, axis=0)
+    
+    fvec = np.concatenate([rot_f.flatten('F'), delta_f.flatten('F')])
+    fvec = np.expand_dims(fvec, 0)
+    assert fvec.shape == (1, 12*N)
+    return fvec
+
 def compute_fvec(tfile):
     """ Takes in a tracking file path, and computes the feature vector
         corresponding to head movement data for each experience type. 
@@ -323,6 +379,8 @@ def compute_fvecs_for_parts(pid_mos, featurization):
           expvecs = [compute_fvec(tfile) for tfile in tfiles] 
         elif featurization == 'norm_hist':
           expvecs = [compute_fvec_magnitude_freqs(tfile) for tfile in tfiles]
+        elif featurization == 'dft':
+            expvecs = [compute_freq_fvec(tfile) for tfile in tfiles]
         else:
           raise ValueError("Unknown featurization method: {}".format(featurization))
         fvec = np.concatenate(expvecs, axis=1)
