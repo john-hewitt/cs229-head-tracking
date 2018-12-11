@@ -77,6 +77,9 @@ def simple_test_suite(args):
         model = cnn.CNN()
         model.load_data(tfdir, csvfile)
         model.fit()
+        preds = model.predict()
+        precision, recall, f1 = model.compute_metrics(preds, model.y_test)
+        print("Precision:  {} \n Recall:  {}  \n  F1:   {} \n".format(precision, recall, f1))
         testing_run = True
     if testing_run:
         print('Tests completed; exiting without running experiments...')
