@@ -266,6 +266,7 @@ def compute_fvec_magnitude_freqs(tfile):
     sums.append(np.sum((delta < .001) , 0))
 
     fvec = (np.array(sums) / np.sum(sums, axis=0)).flatten()
+    fvec = np.expand_dims(fvec, 0)
     return fvec
 
 def load_channels(tfile):
@@ -319,7 +320,7 @@ def compute_freq_fvec(tfile, N=20):
     rot_f = np.fft.fft(rot, n=N, axis=0)
     delta_f = np.fft.fft(delta, n=N, axis=0)
     
-    fvec = np.concatenate([rot_f.flatten('F'), delta_f.flatten('F')])
+    fvec = np.abs(np.concatenate([rot_f.flatten('F'), delta_f.flatten('F')]))
     fvec = np.expand_dims(fvec, 0)
     assert fvec.shape == (1, 12*N)
     return fvec
@@ -373,20 +374,21 @@ def compute_fvecs_for_parts(pid_mos, featurization):
         PARTS.
     """
     fvecs = None
-    for pid, mo in pid_mos:
+    for index, (pid, mo) in enumerate(pid_mos):
+        print(index, pid, mo)
         tfiles = [tracking_file(pid, mo, exp) for exp in exps]
 
         if featurization == 'summary_stats':
-          expvecs = [compute_fvec(tfile) for tfile in tfiles] 
+          expvecs = [compute_fvec(tfile) for tfile in tfiles]
         elif featurization == 'norm_hist':
           expvecs = [compute_fvec_magnitude_freqs(tfile) for tfile in tfiles]
         elif featurization == 'dft':
-            expvecs = [compute_freq_fvec(tfile) for tfile in tfiles]
+            expvecs = [compute_freq_fvec(tfile, 30) for tfile in tfiles]
         else:
           raise ValueError("Unknown featurization method: {}".format(featurization))
         fvec = np.concatenate(expvecs, axis=1)
         if fvecs is None: 
-            fvecs = np.array(fvec)
+          fvecs = np.array(fvec)
         else:
             fvecs = np.concatenate([fvecs, fvec], axis=0)
         
