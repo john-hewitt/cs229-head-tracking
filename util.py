@@ -4,6 +4,7 @@ import os
 import numpy as np
 import sklearn as sk
 import re
+import cnn
 
 # globals
 mos = [0, 2, 6, 12] 
@@ -394,21 +395,43 @@ def compute_fvecs_for_parts(pid_mos, featurization):
     return fvecs
     
 
+def load_raw_hm_data(tfile):
+    """ Takes in a tracking file path, and loads raw head movement data for use in CNN featurization learning
+        Returns the feature vector as a 6-by-n numpy array.                                                                              
+    """
+    # load data from file                                                                                
+    with open(tfile) as tsvin:
+        tsvin = csv.reader(tsvin, delimiter='\t')
+
+        rot = []
+        for index, row in enumerate(tsvin):
+            ch1 = row[1]
+            ch2 = row[2]
+            roti = json.loads(ch1) + json.loads(ch2)
+            rot.append(roti)
+    rot = np.array(rot)
+    #print("rot shape is {} \n".format(rot.shape))
+    return rot
+
+def compute_CNN_featurization():
+    ''' Should only be done once to learn model, then just read from disk when want to use'''
+    return
+
 def get_experience_indices(experience):
     """Given an experience type in ['R', 'N1', 'N2', 'P1', 'P2']  
        return the indices in the feature vector that the 
        experience maps to 
     """
     if experience == 'R':
-        indices = (0, 23)
+        indices = (0, 24)
     elif experience == 'N1':
-        indices = (24, 47)
+        indices = (24, 48)
     elif experience == 'N2':
-        indices = (48, 71)
+        indices = (48, 72)
     elif experience == 'P1':
-        indices =  (72, 95)
+        indices =  (72, 96)
     elif experience ==  'P2':
-        indices = (96, 123)
+        indices = (96, 120)
     return indices
     
     

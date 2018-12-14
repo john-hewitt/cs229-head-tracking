@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 import util
 import models
 import experiments
+import cnn
 
 def main(args):
     """ 
@@ -72,6 +73,14 @@ def simple_test_suite(args):
     if args.test_which_scores and args.test_which_tracking:
         print('number of (pid, mo) pairs that have both tracking data and GAD7 scores: {}'.format(len(set(pid_mos_t) & set(pid_mos_sg))))
         print('number of (pid, mo) pairs that have both tracking data and SCL20 scores: {}'.format(len(set(pid_mos_t) & set(pid_mos_ss))))
+    if args.test_CNN:
+        model = cnn.CNN()
+        model.load_data(tfdir, csvfile)
+        model.fit()
+        preds = model.predict()
+        precision, recall, f1 = model.compute_metrics(preds, model.y_test)
+        print("Precision:  {} \n Recall:  {}  \n  F1:   {} \n".format(precision, recall, f1))
+        testing_run = True
     if testing_run:
         print('Tests completed; exiting without running experiments...')
         exit()
@@ -97,6 +106,8 @@ if __name__ == '__main__':
             help='How to featurize the data. Either summary_stats or norm_hist')
     parser.add_argument('--expt', type=str, default = '',
             help='String name of function containing the experiment you would like to run.')
+    parser.add_argument('--test_CNN', default=False, 
+            help='Flag indicating whether to test computation of CNN featurization')
     args = parser.parse_args()
 
     # Set random seeds so results are replicable
