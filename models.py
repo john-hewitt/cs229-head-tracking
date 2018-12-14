@@ -95,21 +95,29 @@ class LearnedEnsembleClassificationGAD7Model(Model):
     self.weights = weights
     self.threshold = threshold
 
-  def fit(self, X, y):
+  def fit(self, X_sstat, X_dft, y):
     '''
     Fits all models given by the model_retriever specified
     (models should be re-retrieved each time as otherwise they'll get stale)
     '''
-    self.models = []
+    self.sstat_models = []
+    self.dft_models = []
     for model in self.model_retriever():
-      self.models.append(model)
-      model.fit(X,y)
+      self.sstat_models.append(model)
+      model.fit(X_sstat, y)
+    for model in self.model_retriever():
+      self.dft_models.append(model)
+      model.fit(X_dft, y)
 
-  def predict(self, x):
+
+  def predict(self, x_sstat, x_dft):
     '''
     Prediction through learned ensemble and cutoff
     '''
-    predictions = np.array([model.predict(x) for model in self.models])
+    sstat_predictions = np.array([model.predict(x_sstat) for model in self.sstat_models])
+    dft_predictions = np.array([model.predict(x_dft) for model in self.dft_models])
+    predictions = np.vstack([sstat_predictions, dft_predictions])
+    #print(predictions.shape)
     weighted_predictions = np.multiply(np.expand_dims(self.weights,1), predictions)
     decision = np.sum(weighted_predictions, 0) > self.threshold
     return decision
@@ -133,12 +141,12 @@ class ClassificationGAD7Model(Model):
         """
         
         # Train logistic regression model                   
-        self.logreg_clf = LogisticRegression(max_iter=1000000000) # lbfgs
-        self.logreg_clf.fit(X, y)
-        self.multinom_clf = MultinomialNB() # lbfgs
-        self.multinom_clf.fit(X, y)
-        self.tree_clf = tree.DecisionTreeClassifier()
-        self.tree_clf.fit(X,y)
+        #self.clf = LogisticRegression(max_iter=1000000000, C=1, solver='liblinear') # lbfgs
+        #self.logreg_clf.fit(X, y)
+        self.clf = MultinomialNB()
+        #self.multinom_clf.fit(X, y)
+        #self.tree_clf = tree.DecisionTreeClassifier(max_depth=5)
+        self.clf.fit(X,y)
         #clf = RandomForestClassifier(n_estimators=3, bootstrap=False)
         self.trained = True
 
@@ -149,12 +157,12 @@ class ClassificationGAD7Model(Model):
         """
         Prediction through ensemble majority vote. 
         """
-        pred_1 = self.logreg_clf.predict(x)
-        pred_2 = self.multinom_clf.predict(x)
-        pred_3 = self.tree_clf.predict(x)
+        #pred_1 = self.logreg_clf.predict(x)
+        pred_2 = self.clf.predict(x)
+        #pred_3 = self.tree_clf.predict(x)
         #pred = (pred_1 ^ pred_2 ^ pred_3)
         #print(pred_1*1+pred_2*1+pred_3*1)
-        pred = (pred_3*1 + pred_2*1 + pred_1*1)/2 > .5
+        #pred = (pred_3*1 + pred_2*1 + pred_1*1)/2 > .5
         #pred = pred_3
         #pred = (pred_1*1.1 + pred_2*1.1 + pred_3*2)/(2+1.1+1.1) > .5
         #pred = pred_3
@@ -164,5 +172,5 @@ class ClassificationGAD7Model(Model):
         #print(pred)
         #input()
         
-        return pred
+        return pred_2
         #return self.clf.predict(x)
